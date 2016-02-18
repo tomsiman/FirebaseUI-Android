@@ -52,7 +52,7 @@ public class RecyclerViewDemoActivity extends FirebaseLoginBaseActivity {
             }
         });
 
-        mRef = new Firebase("https://firebaseui.firebaseio.com/chat_3");
+        mRef = new Firebase("https://firebaseui.firebaseio.com/chat_32");
         mChatRef = mRef.limitToLast(50);
 
         mSendButton.setOnClickListener(new View.OnClickListener() {
@@ -79,21 +79,11 @@ public class RecyclerViewDemoActivity extends FirebaseLoginBaseActivity {
         mMessages.setHasFixedSize(false);
         mMessages.setLayoutManager(manager);
 
-        mRecycleViewAdapter = new FirebaseRecyclerAdapter<Chat, ChatHolder>(Chat.class, R.layout.message, ChatHolder.class, mChatRef) {
-            @Override
-            public void populateViewHolder(ChatHolder chatView, Chat chat, int position) {
-                chatView.setName(chat.getName());
-                chatView.setText(chat.getText());
+    }
 
-                if (getAuth() != null && chat.getUid().equals(getAuth().getUid())) {
-                    chatView.setIsSender(true);
-                } else {
-                    chatView.setIsSender(false);
-                }
-            }
-        };
-
-        mMessages.setAdapter(mRecycleViewAdapter);
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
     }
 
     @Override
@@ -103,6 +93,54 @@ public class RecyclerViewDemoActivity extends FirebaseLoginBaseActivity {
         setEnabledAuthProvider(AuthProviderType.TWITTER);
         setEnabledAuthProvider(AuthProviderType.GOOGLE);
         setEnabledAuthProvider(AuthProviderType.PASSWORD);
+    }
+
+    protected boolean attachAdapter() {
+        if (mRecycleViewAdapter == null && getAuth() != null) {
+            Log.w(TAG, "attaching adapter");
+            mRecycleViewAdapter = new FirebaseRecyclerAdapter<Chat, ChatHolder>(Chat.class, R.layout.message, ChatHolder.class, mChatRef) {
+                @Override
+                public void populateViewHolder(ChatHolder chatView, Chat chat, int position) {
+                    chatView.setName(chat.getName());
+                    chatView.setText(chat.getText());
+
+                    if (getAuth() != null && chat.getUid().equals(getAuth().getUid())) {
+                        chatView.setIsSender(true);
+                    } else {
+                        chatView.setIsSender(false);
+                    }
+                }
+            };
+
+            mMessages.setAdapter(mRecycleViewAdapter);
+            return true;
+        }
+        return false;
+    }
+    protected boolean detachAdapter() {
+        if (mRecycleViewAdapter != null) {
+            Log.w(TAG, "cleaning up adapter");
+            mRecycleViewAdapter.cleanup();
+            mRecycleViewAdapter = null;
+            mMessages.setAdapter(null);
+            return true;
+        }
+        return false;
+    }
+
+
+    @Override
+    protected void onResume() {
+        Log.i(TAG, "onResume");
+        super.onResume();
+        attachAdapter();
+    }
+
+    @Override
+    protected void onPause() {
+        Log.i(TAG, "onPause");
+        super.onPause();
+        detachAdapter();
     }
 
     @Override
@@ -150,7 +188,7 @@ public class RecyclerViewDemoActivity extends FirebaseLoginBaseActivity {
         }
 
         invalidateOptionsMenu();
-        mRecycleViewAdapter.notifyDataSetChanged();
+        attachAdapter();
     }
 
     @Override
@@ -158,7 +196,7 @@ public class RecyclerViewDemoActivity extends FirebaseLoginBaseActivity {
         Log.i(TAG, "Logged out");
         mName = "";
         invalidateOptionsMenu();
-        mRecycleViewAdapter.notifyDataSetChanged();
+        detachAdapter();
     }
 
     @Override
